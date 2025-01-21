@@ -56,7 +56,6 @@ mysql> describe user_sessions;
 8 rows in set (0.00 sec)
 
 mysql> describe socket_connections
-    -> ;
 +-------------+----------+------+-----+-------------------+-------------------+
 | Field       | Type     | Null | Key | Default           | Extra             |
 +-------------+----------+------+-----+-------------------+-------------------+
