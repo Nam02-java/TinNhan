@@ -137,7 +137,7 @@ public class IOClientHandler implements Runnable {
             // Socket Connection delete socket in database
             socketConnectionRepository.deleteById(senderSocketConnection.getId());
 
-            out.println("up con cu may date di");
+      
             // User Sessions set status online to offline in database
             userSessionRepository.updateStatusToOfflineById(senderUserSession.getId());
 
