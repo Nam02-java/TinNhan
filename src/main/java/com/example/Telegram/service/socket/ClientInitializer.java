@@ -62,7 +62,7 @@ public class ClientInitializer {
             @Override
             public void run() {
                 NotificationApiCaller notificationService = new NotificationApiCaller();
-                notificationService.listeningNotifyMessageSeen(userName);
+                notificationService.listeningNotifyMessageSeen(userName, device_info);
             }
         });
 
@@ -98,7 +98,7 @@ public class ClientInitializer {
                     @Override
                     public void run() {
                         NotificationApiCaller notificationService = new NotificationApiCaller();
-                        notificationService.listeningNotifyMessageSeen(userName);
+                        notificationService.listeningNotifyMessageSeen(userName, device_info);
                     }
                 });
 
@@ -132,10 +132,5 @@ public class ClientInitializer {
         return socketInfo;
     }
 
-    /**
-     * Testing
-     */
-    public void stopSseService() {
-        executorService.shutdownNow();
-    }
+
 }

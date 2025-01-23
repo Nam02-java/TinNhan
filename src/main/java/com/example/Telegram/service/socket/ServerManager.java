@@ -7,6 +7,7 @@ import com.example.Telegram.model.repository.UserRepository;
 import com.example.Telegram.model.repository.UserSessionRepository;
 import com.example.Telegram.service.json.JsonMessageParser;
 import com.example.Telegram.service.json.JsonMessageUpdate;
+import com.example.Telegram.service.sse.SseEmitterManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -45,7 +46,8 @@ public class ServerManager {
 
     @Autowired
     private SocketConnectionRepository socketConnectionRepository;
-
+    @Autowired
+    private SseEmitterManager sseEmitterManager;
 
     public void startServer() throws IOException {
 
@@ -65,7 +67,8 @@ public class ServerManager {
             threadPool.submit(new IOClientHandler(
                     socketManager, clientSocket,
                     userRepository, messageRepository, userSessionRepository, socketConnectionRepository,
-                    jsonMessageParser, jsonMessageUpdate));
+                    jsonMessageParser, jsonMessageUpdate,
+                    sseEmitterManager));
 
 
         }

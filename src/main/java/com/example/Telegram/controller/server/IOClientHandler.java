@@ -12,6 +12,7 @@ import com.example.Telegram.model.repository.UserSessionRepository;
 import com.example.Telegram.service.json.JsonMessageParser;
 import com.example.Telegram.service.json.JsonMessageUpdate;
 import com.example.Telegram.service.socket.SocketManager;
+import com.example.Telegram.service.sse.SseEmitterManager;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -38,6 +39,8 @@ public class IOClientHandler implements Runnable {
     private JsonMessageParser jsonMessageParser;
     private JsonMessageUpdate jsonMessageUpdate;
     private String messageFromClient;
+    private final SseEmitterManager sseEmitterManager;
+
 
     public IOClientHandler(SocketManager socketManager,
                            Socket socket,
@@ -46,7 +49,8 @@ public class IOClientHandler implements Runnable {
                            UserSessionRepository userSessionRepository,
                            SocketConnectionRepository socketConnectionRepository,
                            JsonMessageParser jsonMessageParser,
-                           JsonMessageUpdate jsonMessageUpdate) {
+                           JsonMessageUpdate jsonMessageUpdate,
+                           SseEmitterManager sseEmitterManager) {
         this.socketManager = socketManager;
         this.currentSocket = socket;
         this.userRepository = userRepository;
@@ -55,11 +59,11 @@ public class IOClientHandler implements Runnable {
         this.socketConnectionRepository = socketConnectionRepository;
         this.jsonMessageParser = jsonMessageParser;
         this.jsonMessageUpdate = jsonMessageUpdate;
+        this.sseEmitterManager = sseEmitterManager;
     }
 
     @Override
     public void run() {
-
 
 
         try {
@@ -131,13 +135,15 @@ public class IOClientHandler implements Runnable {
             Optional<UserSession> optionalUserSession = userSessionRepository.findById(senderSocketConnection.getSessionId());
             UserSession senderUserSession = optionalUserSession.get();
 
+            // disconnect SSE
+            sseEmitterManager.removeEmitter(senderUserSession.getSessionToken());
+
             // SocktManager remove current socket from list
             socketManager.removeClient(currentSocket);
 
             // Socket Connection delete socket in database
             socketConnectionRepository.deleteById(senderSocketConnection.getId());
 
-      
             // User Sessions set status online to offline in database
             userSessionRepository.updateStatusToOfflineById(senderUserSession.getId());
 

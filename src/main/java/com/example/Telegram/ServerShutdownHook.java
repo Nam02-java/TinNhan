@@ -3,7 +3,7 @@ package com.example.Telegram;
 import com.example.Telegram.model.repository.SocketConnectionRepository;
 import com.example.Telegram.model.repository.UserRepository;
 import com.example.Telegram.model.repository.UserSessionRepository;
-import com.example.Telegram.service.socket.ServerManager;
+import com.example.Telegram.service.sse.SseEmitterManager;
 import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -17,13 +17,15 @@ public class ServerShutdownHook {
     private UserSessionRepository userSessionRepository;
     @Autowired
     private SocketConnectionRepository socketConnectionRepository;
+
     @Autowired
-    private ServerManager serverManager;
+    private SseEmitterManager sseEmitterManager;
+
 
     @PreDestroy
     @Transactional
     public void onShutdown() {
-        System.out.println("Destroy method in TelegramApplication invoked");
+        sseEmitterManager.completeAllEmitters();
 
         // Update all statuses of user session records to offline
         try {

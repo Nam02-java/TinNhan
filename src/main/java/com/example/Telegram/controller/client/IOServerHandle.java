@@ -120,7 +120,7 @@ public class IOServerHandle {
                                 System.exit(0);
                             }
                         }
-                    }, 20000);
+                    }, 5000);
 
                     /**
                      * When the user enters "3" words into the console -> the program will simulate the case of the user's client successfully connecting to the internet

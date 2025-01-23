@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -16,6 +17,7 @@ public interface UserSessionRepository extends JpaRepository<UserSession, Long> 
 
     // Find UserSession by id
     Optional<UserSession> findById(Long id);
+    List<UserSession> findByUserId(Long userId);
 
     @Modifying
     @Transactional

@@ -9,10 +9,10 @@ public class NotificationApiCaller {
 
     private String SERVER_URL = "http://localhost:8080/api/notifications";
 
-    public void listeningNotifyMessageSeen(String currentUsername) {
+    public void listeningNotifyMessageSeen(String currentUsername, String device_info) {
         try {
             // Create the request URL
-            String url = SERVER_URL + "/" + currentUsername + "/listening-message-seen";
+            String url = SERVER_URL + "/" + currentUsername + "/" + device_info + "/listening-message-seen";
 
             // Open connection to server
             HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();

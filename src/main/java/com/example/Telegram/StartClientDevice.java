@@ -25,20 +25,3 @@ public class StartClientDevice {
     }
 }
 
-/**
- * testing
- */
-//        Thread shutdownHook = new Thread(new Runnable() {
-//            @Override
-//            public void run() {
-//                clientInitializer.stopSseService();
-//                System.out.println("Client stopped and all threads are cleaned up.");
-//            }
-//        });
-//
-//        Runtime.getRuntime().addShutdownHook(shutdownHook);
-
-
-
-
-
