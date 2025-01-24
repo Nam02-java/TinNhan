@@ -2,6 +2,10 @@ package com.example.Telegram.controller.client;
 
 
 import com.example.Telegram.exception.ConnectionLostException;
+import com.example.Telegram.service.console.Command;
+import com.example.Telegram.service.console.CommandInvoker;
+import com.example.Telegram.service.console.CommandType;
+import com.example.Telegram.service.console.NetworkState;
 import com.example.Telegram.service.http.restful.MessageHistoryApiCaller;
 import com.example.Telegram.service.http.restful.MessageStatusApiCaller;
 import com.example.Telegram.service.http.restful.MessageUnreadApiCaller;
@@ -20,9 +24,6 @@ import java.net.Socket;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 
 
 import static java.lang.System.out;
@@ -35,45 +36,50 @@ public class IOServerHandle {
     private BufferedReader userInput;
     private String currentUsername;
     private Socket socket;
-    private boolean simulateNetworkLoss = false;
+    private CommandInvoker commandInvoker;
     private JsonMessageBuilder jsonMessageBuilder;
     private JsonMessageParser jsonMessageParser;
     private MessageStatusApiCaller messageStatusApiCaller;
     private MessageHistoryApiCaller messageHistoryApiCaller;
     private MessageUnreadApiCaller messageUnreadApiCaller;
     private MessageQueueManager messageQueueManager;
+    private NetworkState networkState;
 
-
-    public IOServerHandle(ClientInitializer clientInitializer, Socket socket, String userName,
+    public IOServerHandle(ClientInitializer clientInitializer, Socket socket, BufferedReader inputFromServer, DataOutputStream outputToServer, BufferedReader userInput,
+                          String userName,
+                          CommandInvoker commandInvoker,
                           JsonMessageBuilder jsonMessageBuilder, JsonMessageParser jsonMessageParser,
                           MessageStatusApiCaller messageStatusApiCaller, MessageHistoryApiCaller messageHistoryApiCaller, MessageUnreadApiCaller messageUnreadApiCaller,
-                          MessageQueueManager messageQueueManager) {
+                          MessageQueueManager messageQueueManager,
+                          NetworkState networkState) {
         this.clientInitializer = clientInitializer;
         this.socket = socket;
+        this.inputFromServer = inputFromServer;
+        this.outputToServer = outputToServer;
+        this.userInput = userInput;
         this.currentUsername = userName;
-        this.userInput = new BufferedReader(new InputStreamReader(System.in));
+        this.commandInvoker = commandInvoker;
         this.jsonMessageBuilder = jsonMessageBuilder;
         this.jsonMessageParser = jsonMessageParser;
         this.messageStatusApiCaller = messageStatusApiCaller;
         this.messageHistoryApiCaller = messageHistoryApiCaller;
         this.messageUnreadApiCaller = messageUnreadApiCaller;
         this.messageQueueManager = messageQueueManager;
+        this.networkState = networkState;
     }
 
     public void initialize() throws IOException {
-        inputFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        outputToServer = new DataOutputStream(socket.getOutputStream());
 
         messageUnreadApiCaller.fetchUnreadMessagesFromServer(currentUsername);
         new Thread(() -> {
             while (true) {
                 try {
-                    if (!simulateNetworkLoss) {
+                    if (!networkState.isSimulateNetworkLoss()) {
                         handleServerMessages(inputFromServer);
                     }
 
                 } catch (ConnectionLostException e) {
-                    if (!simulateNetworkLoss) {
+                    if (!networkState.isSimulateNetworkLoss()) {
                         out.println(e.getMessage());
                         Socket newSocket = clientInitializer.reconnect();
                         updateIO(newSocket);
@@ -84,78 +90,22 @@ public class IOServerHandle {
 
 
         String messageToServer;
-        int currentPage = 0;
         try {
             while ((messageToServer = userInput.readLine()) != null) {
+                CommandType commandType = CommandType.fromString(messageToServer);
 
-                /**
-                 * When the user enters "1" into the console -> the program will see it as a signal that the user requests to load history
-                 */
-                if ("1".equals(messageToServer)) {
-                    List<String> history = messageHistoryApiCaller.fetchChatHistoryFromServer(currentPage);
-                    if (history.isEmpty()) {
-                        out.println("No more history available");
-                    } else {
-                        out.println("-----------------history messages-----------------");
-                        for (String message : history) {
-                            out.println(message);
-                        }
-                        out.println("-----------------history messages-----------------");
-                        currentPage++; // Increase the current page
-                    }
-
-                    /**
-                     * When the user enters "2" words into the console -> the program will simulate the case where the user's client loses internet connection
-                     */
-                } else if ("2".equals(messageToServer)) {
-                    simulateNetworkLoss = true;
-                    out.println("Internet connection loss simulation starts working");
-
-                    Timer timer = new Timer();
-                    timer.schedule(new TimerTask() {
-                        @Override
-                        public void run() {
-                            if (simulateNetworkLoss) {
-                                out.println("Lost internet beyond waiting time , exiting...");
-                                System.exit(0);
-                            }
-                        }
-                    }, 5000);
-
-                    /**
-                     * When the user enters "3" words into the console -> the program will simulate the case of the user's client successfully connecting to the internet
-                     */
-                } else if ("3".equals(messageToServer)) {
-                    if (simulateNetworkLoss) {
-                        simulateNetworkLoss = false;
-                        out.println("internet connection loss simulation ends");
-
-
-                        messageUnreadApiCaller.fetchUnreadMessagesFromServer(currentUsername);
-
-                        // Push all pending messages in the queue to server
-                        while (messageQueueManager.hasPendingMessages()) {
-                            JSONObject jsonMessageQueueManager = messageQueueManager.getNextMessage();
-
-                            outputToServer.writeBytes(jsonMessageQueueManager.toString() + "\n");
-                        }
-                    }
-
-
-                    /**
-                     * real time chat
-                     */
+                if (commandType != null) {
+                    commandInvoker.execute(commandType);
                 } else {
-                    if (simulateNetworkLoss) {
+                    if (networkState.isSimulateNetworkLoss()) {
                         JSONObject jsonObjectMessageHasNotBeenSent = jsonMessageBuilder.build(currentUsername, messageToServer);
                         messageQueueManager.addMessage(new JSONObject(jsonObjectMessageHasNotBeenSent.toString()));
                         String messagesHasNotBeenSent = senderMessages(jsonObjectMessageHasNotBeenSent);
-                        out.println("Messages has not been sent - " + messagesHasNotBeenSent);
-                        continue;
+                        System.out.println("Messages has not been sent - " + messagesHasNotBeenSent);
+                    } else {
+                        JSONObject messageJson = jsonMessageBuilder.build(currentUsername, messageToServer);
+                        outputToServer.writeBytes(messageJson.toString() + "\n");
                     }
-                    JSONObject messageJson = jsonMessageBuilder.build(currentUsername, messageToServer);
-                    outputToServer.writeBytes(messageJson.toString() + "\n");
-
                 }
             }
         } catch (IOException e) {
@@ -169,7 +119,7 @@ public class IOServerHandle {
 
             messageFromServer = inputFromServer.readLine();
 
-            if (!simulateNetworkLoss) {
+            if (!networkState.isSimulateNetworkLoss()) {
                 jsonMessageParser.parseJson(messageFromServer);
                 Long messageId = jsonMessageParser.getId(); // id messages
                 String senderName = jsonMessageParser.getUsername(); // sender name

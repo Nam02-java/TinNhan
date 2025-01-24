@@ -11,7 +11,6 @@ public class SseEmitterManager {
 
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
-
     public void addEmitter(String sessionToken, SseEmitter emitter) {
         if (sessionToken == null || emitter == null) {
             return;
@@ -24,14 +23,12 @@ public class SseEmitterManager {
         emitters.put(sessionToken, emitter);
     }
 
-
     public synchronized void removeEmitter(String sessionKey) {
         SseEmitter emitter = emitters.remove(sessionKey);
         if (emitter != null) {
             emitter.complete();
         }
     }
-
 
     public synchronized void completeAllEmitters() {
         for (Map.Entry<String, SseEmitter> entry : emitters.entrySet()) {

@@ -2,6 +2,7 @@ package com.example.Telegram.service.socket;
 
 import com.example.Telegram.controller.client.IOServerHandle;
 import com.example.Telegram.exception.ConnectionLostException;
+import com.example.Telegram.service.console.*;
 import com.example.Telegram.service.http.restful.MessageHistoryApiCaller;
 import com.example.Telegram.service.http.restful.MessageStatusApiCaller;
 import com.example.Telegram.service.http.restful.MessageUnreadApiCaller;
@@ -11,7 +12,10 @@ import com.example.Telegram.service.json.JsonMessageBuilder;
 import com.example.Telegram.service.json.JsonMessageParser;
 import com.example.Telegram.service.messages.MessageQueueManager;
 
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -24,6 +28,11 @@ public class ClientInitializer {
     private String userName;
     private String device_info;
     private String ipAddress;
+    private BufferedReader inputFromServer;
+    private DataOutputStream outputToServer;
+    private BufferedReader userInput;
+    private CommandInvoker commandInvoker;
+    private NetworkState networkState;
     private ExecutorService executorService;
     private UserSessionApiCaller userSessionApiCaller;
     private MessageStatusApiCaller messageStatusApiCaller;
@@ -66,14 +75,32 @@ public class ClientInitializer {
             }
         });
 
+        inputFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        outputToServer = new DataOutputStream(socket.getOutputStream());
+        userInput = new BufferedReader(new InputStreamReader(System.in));
+
         messageStatusApiCaller = new MessageStatusApiCaller(SERVER_URL_MESSAGES);
         messageHistoryApiCaller = new MessageHistoryApiCaller(SERVER_URL_MESSAGES, jsonMessageParser);
         messageUnreadApiCaller = new MessageUnreadApiCaller(SERVER_URL_MESSAGES, jsonMessageParser);
 
         messageQueueManager = new MessageQueueManager();
 
+        /**
+         * Create command
+         * Create Invoker and register commands
+         */
+        initializeCommands();
+
         // Set up IO for client
-        IOServerHandle ioServerHandle = new IOServerHandle(this, socket, userName, jsonMessageBuilder, jsonMessageParser, messageStatusApiCaller, messageHistoryApiCaller, messageUnreadApiCaller, messageQueueManager);
+        IOServerHandle ioServerHandle = new IOServerHandle(this,
+                socket,
+                inputFromServer, outputToServer, userInput,
+                userName,
+                commandInvoker,
+                jsonMessageBuilder, jsonMessageParser,
+                messageStatusApiCaller, messageHistoryApiCaller, messageUnreadApiCaller,
+                messageQueueManager,
+                networkState);
         ioServerHandle.initialize();
     }
 
@@ -132,5 +159,17 @@ public class ClientInitializer {
         return socketInfo;
     }
 
+    private void initializeCommands() {
+        // Create command
+        networkState = new NetworkState();
+        Command loadHistoryCommand = new LoadHistoryCommand(messageHistoryApiCaller);
+        Command simulateNetworkLossCommand = new SimulateNetworkLossCommand(networkState);
+        Command restoreNetworkCommand = new RestoreNetworkCommand(networkState, messageQueueManager, messageUnreadApiCaller, outputToServer, userName);
 
+        // Create Invoker and register commands
+        commandInvoker = new CommandInvoker();
+        commandInvoker.register(CommandType.LOAD_HISTORY, loadHistoryCommand);
+        commandInvoker.register(CommandType.SIMULATE_NETWORK_LOSS, simulateNetworkLossCommand);
+        commandInvoker.register(CommandType.RESTORE_NETWORK, restoreNetworkCommand);
+    }
 }
