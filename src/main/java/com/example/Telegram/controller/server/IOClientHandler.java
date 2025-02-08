@@ -41,7 +41,6 @@ public class IOClientHandler implements Runnable {
     private String messageFromClient;
     private final SseEmitterManager sseEmitterManager;
 
-
     public IOClientHandler(SocketManager socketManager,
                            Socket socket,
                            UserRepository userRepository,
@@ -64,7 +63,6 @@ public class IOClientHandler implements Runnable {
 
     @Override
     public void run() {
-
 
         try {
             inputFromClient = new BufferedReader(new InputStreamReader(currentSocket.getInputStream()));

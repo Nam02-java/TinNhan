@@ -21,11 +21,13 @@ public class SseEmitterManager {
             existingEmitter.complete();
         }
         emitters.put(sessionToken, emitter);
+        System.out.println("add emitter from sseEmitterManage.class " + sessionToken);
     }
 
     public synchronized void removeEmitter(String sessionKey) {
         SseEmitter emitter = emitters.remove(sessionKey);
         if (emitter != null) {
+            System.out.println("remove emitter from sseEmitterManage.class");
             emitter.complete();
         }
     }

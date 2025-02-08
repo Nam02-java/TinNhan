@@ -32,13 +32,21 @@ public class Message {
 
     @Column(name = "seen_at", nullable = true)
     private LocalDateTime seenAt;
+
+    @Column(name = "seen_notified_status", nullable = false, length = 10)
+    private String seenNotifiedStatus;
+
     @PrePersist
     protected void onCreate() {
         if (this.sentAt == null) {
             this.sentAt = LocalDateTime.now();
         }
         if (this.status == null) {
-            this.status = "unread"; // Default value for status
+            this.status = "unread";
+        }
+        if (this.seenNotifiedStatus == null) {
+            this.seenNotifiedStatus = "unsent";
         }
     }
+
 }
