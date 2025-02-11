@@ -132,7 +132,7 @@ public class ClientInitializer {
                 break;
 
             } catch (ConnectionLostException e) {
-                System.out.println(e.getMessage());
+               //System.out.println(e.getMessage());
             } catch (IOException e) {
                 System.out.println(e.getMessage());
             }

@@ -152,3 +152,25 @@ public class NotificationController {
 }
 
 
+/**
+ * Continue researching timeout of client's sseEmitter and server's sseEmitter
+ * <p>
+ * http://localhost:8080/api/notifications/Nam02/listening-message-seen
+ * http://localhost:8080/api/notifications/Linh02/listening-message-seen
+ * <p>
+ * private final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+ * private final ExecutorService executor = Executors.newFixedThreadPool(2);
+ */
+
+//@PostMapping("/{currentUsername}/{device_info}/stop-sse")
+//    public ResponseEntity<String> stopSseForUser(
+//            @PathVariable String currentUsername,
+//            @PathVariable String device_info) {
+//        User user = userRepository.findByUsername(currentUsername);
+//        if (user == null) {
+//            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+//        }
+//
+//        emitterManager.removeEmitter(currentUsername);
+//        return ResponseEntity.ok("Stopped SSE for user: " + currentUsername + ", client: " + currentUsername);
+//    }

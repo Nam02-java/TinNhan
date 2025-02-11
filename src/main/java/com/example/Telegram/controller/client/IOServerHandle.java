@@ -44,6 +44,7 @@ public class IOServerHandle {
     private MessageUnreadApiCaller messageUnreadApiCaller;
     private MessageQueueManager messageQueueManager;
     private NetworkState networkState;
+    private boolean allowMessageSending;
 
     public IOServerHandle(ClientInitializer clientInitializer, Socket socket, BufferedReader inputFromServer, DataOutputStream outputToServer, BufferedReader userInput,
                           String userName,
@@ -66,10 +67,10 @@ public class IOServerHandle {
         this.messageUnreadApiCaller = messageUnreadApiCaller;
         this.messageQueueManager = messageQueueManager;
         this.networkState = networkState;
+        allowMessageSending = true;
     }
 
     public void initialize() throws IOException {
-
         messageUnreadApiCaller.fetchUnreadMessagesFromServer(currentUsername);
         new Thread(() -> {
             while (true) {
@@ -77,25 +78,37 @@ public class IOServerHandle {
                     if (!networkState.isSimulateNetworkLoss()) {
                         handleServerMessages(inputFromServer);
                     }
-
                 } catch (ConnectionLostException e) {
+
+                    allowMessageSending = false;
                     if (!networkState.isSimulateNetworkLoss()) {
                         out.println(e.getMessage());
+
                         Socket newSocket = clientInitializer.reconnect();
                         updateIO(newSocket);
+
+                        resendQueuedMessages();
+                        allowMessageSending = true;
                     }
                 }
             }
         }).start();
 
-
         String messageToServer;
         try {
+            commandInvoker.execute(CommandType.LOAD_HISTORY);
             while ((messageToServer = userInput.readLine()) != null) {
                 CommandType commandType = CommandType.fromString(messageToServer);
 
                 if (commandType != null) {
+                    if (commandType == CommandType.LOAD_HISTORY || commandType == CommandType.RESTORE_NETWORK) {
+                        if (!allowMessageSending) {
+                            out.println("The server is offline and cannot be operated " + "\n");
+                            continue;
+                        }
+                    }
                     commandInvoker.execute(commandType);
+
                 } else {
                     if (networkState.isSimulateNetworkLoss()) {
                         JSONObject jsonObjectMessageHasNotBeenSent = jsonMessageBuilder.build(currentUsername, messageToServer);
@@ -103,8 +116,15 @@ public class IOServerHandle {
                         String messagesHasNotBeenSent = senderMessages(jsonObjectMessageHasNotBeenSent);
                         System.out.println("Messages has not been sent - " + messagesHasNotBeenSent);
                     } else {
-                        JSONObject messageJson = jsonMessageBuilder.build(currentUsername, messageToServer);
-                        outputToServer.writeBytes(messageJson.toString() + "\n");
+                        if (allowMessageSending) {
+                            JSONObject messageJson = jsonMessageBuilder.build(currentUsername, messageToServer);
+                            outputToServer.writeBytes(messageJson.toString() + "\n");
+                        } else {
+                            JSONObject jsonObjectMessageHasNotBeenSent = jsonMessageBuilder.build(currentUsername, messageToServer);
+                            messageQueueManager.addMessage(new JSONObject(jsonObjectMessageHasNotBeenSent.toString()));
+                            String messagesHasNotBeenSent = senderMessages(jsonObjectMessageHasNotBeenSent);
+                            System.out.println("Messages has not been sent - " + messagesHasNotBeenSent);
+                        }
                     }
                 }
             }
@@ -152,7 +172,6 @@ public class IOServerHandle {
         return string;
     }
 
-
     private void updateIO(Socket newSocket) {
         try {
             inputFromServer = new BufferedReader(new InputStreamReader(newSocket.getInputStream()));
@@ -162,6 +181,26 @@ public class IOServerHandle {
             throw new RuntimeException("Failed to update IO streams, cannot proceed", e);
         }
     }
+
+    private void resendQueuedMessages() {
+        while (messageQueueManager.hasPendingMessages()) {
+            JSONObject jsonMessageQueueManager = messageQueueManager.getNextMessage();
+            try {
+                outputToServer.writeBytes(jsonMessageQueueManager.toString() + "\n");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }
 
 
+class main {
+    public static void main(String[] args) {
+        int a = 2;
+        int b = 1;
+        if (a == 3 || b == 6) {
+            out.println("ok");
+        }
+    }
+}

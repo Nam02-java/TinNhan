@@ -26,6 +26,6 @@ public class SimulateNetworkLossCommand implements Command {
                     System.exit(0);
                 }
             }
-        }, 20000);
+        }, 50000);
     }
 }
