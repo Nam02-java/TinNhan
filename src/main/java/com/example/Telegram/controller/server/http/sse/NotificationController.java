@@ -99,6 +99,10 @@ public class NotificationController {
                         if (!lastMessage.getRecipient().getId().equals(senderId)) {
                             String info = lastMessage.getMessageContent() + " - seen at " + "[" + lastMessage.getSeenAt() + "]";
                             emitter.send(info);
+
+                            lastMessage.setSeenNotifiedStatus("sent"); // Default value
+                            messageRepository.save(lastMessage);
+
                             lastMessageId = lastMessage.getId();
                         }
                     }
